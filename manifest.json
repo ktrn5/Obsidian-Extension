@@ -1,0 +1,11 @@
+{
+	"id": "train-plugin",
+	"name": "Code block Plugin",
+	"version": "1.0.0",
+	"minAppVersion": "0.1.0",
+	"description": "Makes a code block out of the selected text",
+	"author": "Tamara Kate Veronika",
+	"authorUrl": "",
+	"fundingUrl": "",
+	"isDesktopOnly": false
+}
