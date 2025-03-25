@@ -22,6 +22,15 @@ module.exports = class SQLNotebookPlugin extends Plugin {
       hotkeys: [{ modifiers: ["Mod"], key: "Enter" }] // горячая клавиша
     });
 
+    // команда для открытия вкладки с инструкциями
+    // одна из функций: позволит польззователю находить КРАТКОЕ руководство
+    this.addCommand({
+      id: "open-instructions",
+      name: "Open instructions tab",
+      callback: () => this.createInstructionsTab(),
+      hotkeys: [{ modifiers: ["Mod"], key: "I" }] // горячая клавиша
+    });
+
     console.log("SQL Plugin загружен"); // логи
   }
 
