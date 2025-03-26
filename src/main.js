@@ -158,6 +158,23 @@ module.exports = class SQLNotebookPlugin extends Plugin {
     return tableHTML; // закрываем таблицу и возваращем ее
   }
 
+  // метод: открываем вкладку-функционал
+  async createInstructionsTab() {
+    const fileName = "Instructions.md";
+    const file = this.app.vault.getAbstractFileByPath(fileName);
+
+    if (file) {
+      const leaf = this.app.workspace.splitActiveLeaf();
+      await leaf.openFile(file);
+    }
+    else {
+      const instructionsText = `== PostgreSQL: short instructions ==\n\n testing: will be updated later`; // will be replaced with a file
+      const newFile = await this.app.vault.create(fileName, instructionsText);
+      const leaf = this.app.workspace.splitActiveLeaf();
+      await leaf.openFile(newFile);
+    }
+  }
+
   onunload() {
     console.log("Plugin was onloaded");
   }
