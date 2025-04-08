@@ -1,58 +1,78 @@
-const express = require("express"); //модуль для создания сервера
-const { Client } = require("pg"); //модуль pg для работы с PostgreSQL
-const cors = require("cors"); //модуль cors для обработки CORS-запросов
+const express = require("express");
+const { Client } = require("pg");
+const cors = require("cors");
+const fs = require("fs").promises; // Для работы с файлами
+const path = require("path");
 
 const app = express();
-const PORT = 3000; //порт, на котором будет работать сервер
+const PORT = 3000;
 
-//поддержка CORS , json
+// Поддержка CORS и JSON
 app.use(cors());
 app.use(express.json());
 
-// создаем клиент для подключения к PostgreSQL
+// Путь к файлу логов
+const logFilePath = path.join(__dirname, "sql_queries_log.json");
+
+// Создаем клиент для подключения к PostgreSQL
 // данные пользователя! 
 const client = new Client({
-  user: "username", 
-  host: "localhost",
-  database: "database_name",
-  password: "password",
-  port: 5432,
+    user: "username",
+    host: "localhost",
+    database: "database_name",
+    password: "password",
+    port: 5432,
 });
 
-// подключаемся к бд, + в логи выводим успешное подключение
-client.connect().then(() => console.log("succesfully connected to PostgreSQL"));
+// Подключаемся к базе данных
+client.connect().then(() => console.log("Successfully connected to PostgreSQL"));
 
-// обработка гет запроса для получения списка таблиц
+// Функция для записи логов
+async function logQuery(sql, result, timestamp) {
+    const logEntry = JSON.stringify({ sql, result, timestamp: timestamp.toISOString() }) + "\n";
+
+    try {
+        await fs.appendFile(logFilePath, logEntry, "utf8");
+        console.log(`Запрос "${sql}" записан в лог.`);
+    } catch (err) {
+        console.error("Ошибка при записи лога:", err);
+    }
+}
+
+// GET /tables — получение списка таблиц
 app.get("/tables", async (req, res) => {
-  try {
-    const result = await client.query(
-      "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';"
-    );
-    res.json(result.rows.map(row => row.table_name));
-  }
-  
-  catch (error) {
-    console.error("Error:", error);
-    res.status(500).send("Error of the server");
-  }
+    try {
+        const result = await client.query(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';"
+        );
+        res.json(result.rows.map((row) => row.table_name));
+    } catch (error) {
+        console.error("Error:", error);
+        res.status(500).send("Server error");
+    }
 });
 
-//  выполнения SQL-запросов
+// POST /query — выполнение SQL-запроса
 app.post("/query", async (req, res) => {
-  const { sql } = req.body;
+    const { sql } = req.body;
 
-  if (!sql) {   // проверяем, что SQL-запрос передан
-    return res.status(400).json({ error: "There is no SQL-query" });
-  }
+    if (!sql) {
+        return res.status(400).json({ error: "SQL query is missing" });
+    }
 
-  try {
-    const result = await client.query(sql);
-    res.json(result.rows);
-  } 
-  catch (error) {
-    console.error("An error occurred while executing the query:", error);
-    res.status(500).json({ error: "An error occurred while executing the query" });
-  }
+    try {
+        const timestamp = new Date(); // Фиксируем время выполнения
+        const result = await client.query(sql);
+
+        // Логируем запрос
+        await logQuery(sql, result.rows, timestamp);
+
+        res.json(result.rows);
+    } catch (error) {
+        console.error("An error occurred while executing the query:", error);
+        res.status(500).json({ error: "An error occurred while executing the query" });
+    }
 });
 
+// Запуск сервера
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
