@@ -31,6 +31,22 @@ module.exports = class SQLNotebookPlugin extends Plugin {
       hotkeys: [{ modifiers: ["Mod"], key: "I" }] // горячая клавиша
     });
 
+    // команда для открытия вкладки с Murder Mystery
+    this.addCommand({
+      id: "open-Interactive-tool",
+      name: "Practice SQL: Murder Mystery",
+      callback: () => this.createMMTab(),
+      hotkeys: [{ modifiers: ["Mod"], key: "6" }] // горячая клавиша
+    });
+
+    // команда для открытия окна ввода овтветов
+    this.addCommand({
+      id: "murder-mystery",
+      name: "Murder Mystery: Guess the name",
+      callback: () => this.openMurderMysteryModal(),
+      hotkeys: [{ modifiers: ["Ctrl"], key: "0" }] // горячая клавиша Ctrl+0
+    });
+
     console.log("SQL Plugin загружен"); // логи
   }
 
@@ -175,8 +191,82 @@ module.exports = class SQLNotebookPlugin extends Plugin {
     }
   }
 
+    // метод: открываем вкладку для практики Murder-Mystery
+  async createMMTab() {
+    const fileName = "SQL Murder Mystery.md";
+    const file = this.app.vault.getAbstractFileByPath(fileName);
+
+    if (file) {
+      const leaf = this.app.workspace.splitActiveLeaf();
+      await leaf.openFile(file);
+    } else {
+      const startText = `
+\`\`\`
+Both a self-directed lesson to learn SQL concepts and fun game for experienced SQL users to solve an intriguing crime!!
+
+A crime has taken place and the detective needs your help. The detective gave you the crime scene report but you somehow lost it. You vaguely remember that the crime was a ​murder​ that occurred sometime on ​Jan.15, 2018​ and that it took place in ​SQL City​. Start by retrieving the corresponding crime scene report from the police department’s database.
+\`\`\`
+
+# Exploring the Database Structure
+
+Experienced SQL users can often use database queries to infer the structure of a database. But each database system has different ways of managing this information. The SQL Murder Mystery in Obsidian uses **PostgreSQL**. After connecting to the database, use various commands!
+
+# Start your investigation right now!!
+
+— Write an SQL query (use PostgreSQL syntax!) and highlight the query. By clicking on the hotkey (defined in the settings) you will get the result.
+
+— As you investigate, study the tables, take notes, and write suspects right here!
+
+— If you want to learn and study some commands, use the hotkey and the instructions will be opened.
+
+*There are a lot of suspects! We recommend limiting requests to 10-30 people. Good luck!*
+* If you want to check your assumption, press ctrl+0 and enter the answer! 
+___________________________________________________________________________
+`;
+
+      const newFile = await this.app.vault.create(fileName, startText);
+      const leaf = this.app.workspace.splitActiveLeaf();
+      await leaf.openFile(newFile);
+    }
+  }
+
+  // метод для открытия модального окна для ввода ответа
+  openMurderMysteryModal() {
+    const modal = new MurderMysteryModal(this.app);
+    modal.open();
+  }
+
   onunload() {
     console.log("Plugin was onloaded");
+  }
+}
+
+// само модальное окно для "Murder Mystery"
+class MurderMysteryModal extends Modal {
+  onOpen() {
+    const { contentEl } = this;
+
+    contentEl.empty();
+    contentEl.createEl("h2", { text: "Murder Mystery" });
+
+    const inputContainer = contentEl.createDiv();
+    const inputField = inputContainer.createEl("input", {
+      attr: { type: "text", placeholder: "Enter the name..." }
+    });
+
+    const submitBtn = contentEl.createEl("button", { text: "Submit" });
+    submitBtn.addEventListener("click", () => this.checkAnswer(inputField.value));
+  }
+
+  // проверка правильности введенного ответа
+  checkAnswer(answer) {
+    const correctAnswer = "Miranda Priestly";
+    if (answer === correctAnswer) {
+      new Notice("Congratulations! It is a correct answer!");
+    } else {
+      new Notice("Not correct. Try one more time!");
+    }
+    this.close();
   }
 }
 
