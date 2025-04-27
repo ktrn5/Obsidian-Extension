@@ -1,0 +1,89 @@
+.sql-container {
+    background-color: #1e3a5f; /* navy blue background */
+    color: white; /* text */
+    padding: 12px;
+    border-radius: 8px;
+    position: relative;
+    margin-top: 10px;
+    font-family: monospace;
+    display: flex;
+    align-items: center;
+}
+
+.sql-code {
+    flex-grow: 1;
+    white-space: pre-wrap;
+    font-size: 14px;
+    color: white;
+}
+
+.sql-run-btn {
+    background-color: #ffcc00;
+    color: black;
+    border: none;
+    padding: 8px 10px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    margin-left: 10px;
+}
+
+.sql-run-btn:hover {
+    background-color: #e6b800;
+}
+
+/* window with results */
+.sql-modal-result {
+    background-color: #1e3a5f;
+    color: white;
+    padding: 10px;
+    font-family: monospace;
+    white-space: pre-wrap;
+    border-radius: 8px;
+}
+
+.sql-modal-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+}
+
+.sql-modal-buttons button {
+    background-color: #007acc;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.sql-modal-buttons button:hover {
+    background-color: #005f99;
+}
+
+  /* styles for tablr */
+.sql-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    background-color: white;
+    color: black;
+}
+
+.sql-table th, .sql-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+.sql-table th {
+    background-color: #007acc;
+    color: white;
+}
+
+.sql-table tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+.sql-table tr:hover {
+    background-color: #ddd;
+}
