@@ -1,7 +1,30 @@
 const fs = require("fs").promises;
+const axios = require("axios");
+const readline = require("readline");
+
+// Создаем интерфейс для чтения ввода пользователя
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+});
+
+// Функция для запроса ввода от пользователя
+function askQuestion(query) {
+    return new Promise((resolve) => {
+        rl.question(query, (answer) => {
+            resolve(answer);
+        });
+    });
+}
+
+// Конфигурация Grafana API
+const GRAFANA_API_URL = "http://localhost:3000/api/dashboards/db";
 
 async function analyzeLogs() {
     try {
+        // Запрос API-ключа у пользователя
+        const GRAFANA_API_KEY = await askQuestion("Введите ваш Grafana API Key: ");
+
         // Чтение логов
         const logs = await fs.readFile("./sql_queries_log.json", "utf8");
         const parsedLogs = logs
@@ -37,8 +60,15 @@ async function analyzeLogs() {
         // Вывод популярных типов запросов
         const popularQueryTypes = getPopularQueryTypes(enrichedLogs);
         console.log("Самые популярные типы запросов:", popularQueryTypes);
+
+        // Создание дашборда в Grafana
+        await createGrafanaDashboard(GRAFANA_API_KEY, enrichedLogs);
+
+        console.log("Дашборд успешно создан в Grafana.");
     } catch (err) {
-        console.error("Ошибка при чтении логов:", err);
+        console.error("Ошибка при чтении логов или создании дашборда:", err);
+    } finally {
+        rl.close(); // Закрываем интерфейс ввода
     }
 }
 
@@ -131,6 +161,79 @@ function getPopularQueryTypes(logs) {
         .map(([type, count]) => ({ type, count }));
 
     return sortedQueryTypes;
+}
+
+// Создание дашборда в Grafana
+async function createGrafanaDashboard(apiKey, logs) {
+    const dashboardConfig = {
+        dashboard: {
+            panels: [
+                {
+                    title: "Распределение типов запросов",
+                    type: "bar",
+                    targets: [
+                        {
+                            datasource: "PostgreSQL",
+                            rawSql: `
+                                SELECT query_type, COUNT(*) AS total_count
+                                FROM (
+                                    VALUES ${logs.map((log) => `('${log.query_type}')`).join(", ")}
+                                ) AS query_data(query_type)
+                                GROUP BY query_type
+                                ORDER BY total_count DESC
+                            `,
+                        },
+                    ],
+                    options: {
+                        legend: {
+                            displayMode: "list",
+                        },
+                    },
+                    gridPos: {
+                        x: 0,
+                        y: 0,
+                        w: 12,
+                        h: 9,
+                    },
+                },
+                {
+                    title: "Активность по часам",
+                    type: "line",
+                    targets: [
+                        {
+                            datasource: "PostgreSQL",
+                            rawSql: `
+                                SELECT hour, COUNT(*) AS total_count
+                                FROM (
+                                    VALUES ${logs.map((log) => `(${log.hour})`).join(", ")}
+                                ) AS activity_data(hour)
+                                GROUP BY hour
+                                ORDER BY hour
+                            `,
+                        },
+                    ],
+                    gridPos: {
+                        x: 12,
+                        y: 0,
+                        w: 12,
+                        h: 9,
+                    },
+                },
+            ],
+            title: "Автоматический дашборд",
+            uid: "auto_dashboard",
+        },
+        folderId: 0,
+        overwrite: true,
+    };
+
+    // Отправка запроса в Grafana API
+    await axios.post(GRAFANA_API_URL, dashboardConfig, {
+        headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+        },
+    });
 }
 
 analyzeLogs();
