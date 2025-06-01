@@ -163,61 +163,92 @@ function getPopularQueryTypes(logs) {
     return sortedQueryTypes;
 }
 
-// Создание дашборда в Grafana
+// ... остальной код без изменений
+
+// Обновлённая функция создания дашборда в Grafana
 async function createGrafanaDashboard(apiKey, logs) {
+    // Подготовка данных
+    const queryTypeValues = logs.map((log) => `('${log.query_type}')`).join(", ");
+    const hourValues = logs.map((log) => `(${log.hour})`).join(", ");
+    const tableValues = logs.map((log) => `('${log.table_name}')`).join(", ");
+    const anomalyValues = logs.map((log) => `('${log.query_type}', '${log.table_name}')`).join(", ");
+
     const dashboardConfig = {
         dashboard: {
             panels: [
                 {
                     title: "Распределение типов запросов",
-                    type: "bar",
+                    type: "barchart",
                     targets: [
                         {
                             datasource: "PostgreSQL",
                             rawSql: `
                                 SELECT query_type, COUNT(*) AS total_count
                                 FROM (
-                                    VALUES ${logs.map((log) => `('${log.query_type}')`).join(", ")}
+                                    VALUES ${queryTypeValues}
                                 ) AS query_data(query_type)
                                 GROUP BY query_type
                                 ORDER BY total_count DESC
                             `,
                         },
                     ],
-                    options: {
-                        legend: {
-                            displayMode: "list",
-                        },
-                    },
-                    gridPos: {
-                        x: 0,
-                        y: 0,
-                        w: 12,
-                        h: 9,
-                    },
+                    gridPos: { x: 0, y: 0, w: 12, h: 9 },
                 },
                 {
                     title: "Активность по часам",
-                    type: "line",
+                    type: "timeseries",
                     targets: [
                         {
                             datasource: "PostgreSQL",
                             rawSql: `
-                                SELECT hour, COUNT(*) AS total_count
+                                SELECT hour::text AS time, COUNT(*) AS total_count
                                 FROM (
-                                    VALUES ${logs.map((log) => `(${log.hour})`).join(", ")}
+                                    VALUES ${hourValues}
                                 ) AS activity_data(hour)
                                 GROUP BY hour
                                 ORDER BY hour
                             `,
                         },
                     ],
-                    gridPos: {
-                        x: 12,
-                        y: 0,
-                        w: 12,
-                        h: 9,
-                    },
+                    gridPos: { x: 12, y: 0, w: 12, h: 9 },
+                },
+                {
+                    title: "Топ таблицы по запросам",
+                    type: "piechart",
+                    targets: [
+                        {
+                            datasource: "PostgreSQL",
+                            rawSql: `
+                                SELECT table_name, COUNT(*) AS total
+                                FROM (
+                                    VALUES ${tableValues}
+                                ) AS table_data(table_name)
+                                GROUP BY table_name
+                                ORDER BY total DESC
+                                LIMIT 5
+                            `,
+                        },
+                    ],
+                    gridPos: { x: 0, y: 9, w: 12, h: 9 },
+                },
+                {
+                    title: "Обнаруженные аномалии (тип+таблица)",
+                    type: "timeseries",
+                    targets: [
+                        {
+                            datasource: "PostgreSQL",
+                            rawSql: `
+                                SELECT query_type || ' - ' || table_name AS anomaly, COUNT(*) AS count
+                                FROM (
+                                    VALUES ${anomalyValues}
+                                ) AS anomaly_data(query_type, table_name)
+                                GROUP BY query_type, table_name
+                                HAVING COUNT(*) > 50
+                                ORDER BY count DESC
+                            `,
+                        },
+                    ],
+                    gridPos: { x: 12, y: 9, w: 12, h: 9 },
                 },
             ],
             title: "Автоматический дашборд",
